@@ -1,0 +1,11 @@
+[package]
+name = "saori-interface-rs"
+version = "0.1.0"
+edition = "2021"
+authors = [ "tukinami seika" ]
+license = "MIT"
+readme = "README.md"
+description = "library for SAORI of Ukagaka."
+
+[dependencies]
+encoding_rs = "0.8.35"
