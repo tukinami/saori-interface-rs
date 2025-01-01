@@ -30,7 +30,7 @@ let request = SaoriRequest::new(request_raw.as_bytes()).unwrap();
 let mut case = SaoriResponse::from_request(&request);
 case.set_result("1".to_string());
 case.set_values(vec!["aaa".to_string(), "bbb".to_string()]);
-let result = case.to_encoded_bytes().unwrap();
+let result = case.to_encoded_bytes().unwrap_or(SaoriResponse::error_bytes());
 
 // testing
 let expect_raw =

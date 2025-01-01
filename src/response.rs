@@ -11,7 +11,7 @@
 //! let mut case = SaoriResponse::from_request(&request);
 //! case.set_result("1".to_string());
 //! case.set_values(vec!["aaa".to_string(), "bbb".to_string()]);
-//! let result = case.to_encoded_bytes().unwrap();
+//! let result = case.to_encoded_bytes().unwrap_or(SaoriResponse::error_bytes());
 //!
 //! // testing
 //! let expect_raw =
@@ -137,6 +137,13 @@ impl SaoriResponse {
         } else {
             Ok(bytes_u8.iter().map(|v| *v as i8).collect())
         }
+    }
+
+    /// エラー時の返答バイト列を返す
+    pub fn error_bytes() -> Vec<i8> {
+        const ERROR_RESPONCE: &str =
+            "SAORI/1.0 500 Internal Server Error\r\nCharset: UTF-8\r\n\r\n\0";
+        ERROR_RESPONCE.as_bytes().iter().map(|v| *v as i8).collect()
     }
 }
 
