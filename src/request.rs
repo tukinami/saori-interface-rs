@@ -17,7 +17,11 @@
 //! assert!(request.sender().is_none());
 //! ```
 
-use encoding_rs::{Encoding, EUC_JP, ISO_2022_JP, SHIFT_JIS, UTF_8};
+use encoding::{
+    all::{EUC_JP, ISO_2022_JP, UTF_8, WINDOWS_31J},
+    types::Encoding,
+    DecoderTrap,
+};
 
 const SAORI_PREFIX_CHARSET: &str = "Charset: ";
 const SAORI_COMMAND_GET_VERSION: &str = "GET Version ";
@@ -154,14 +158,11 @@ impl SaoriRequest {
                 SaoriCharset::ShiftJIS
             };
 
-        let (contents, _used_encoding, has_error) = charset.to_encoding().decode(bytes);
-
-        if has_error {
-            Err(SaoriRequestError::Charset(
+        match charset.to_encoding().decode(bytes, DecoderTrap::Strict) {
+            Ok(v) => Ok((v, charset)),
+            Err(_) => Err(SaoriRequestError::Charset(
                 SaoriRequestCharsetError::DecodeFailed,
-            ))
-        } else {
-            Ok((contents.to_string(), charset))
+            )),
         }
     }
 
@@ -263,12 +264,12 @@ impl SaoriCharset {
         }
     }
 
-    pub fn to_encoding(&self) -> &'static Encoding {
+    pub fn to_encoding(&self) -> Box<&'static dyn Encoding> {
         match self {
-            SaoriCharset::ShiftJIS => SHIFT_JIS,
-            SaoriCharset::EucJP => EUC_JP,
-            SaoriCharset::UTF8 => UTF_8,
-            SaoriCharset::ISO2022JP => ISO_2022_JP,
+            SaoriCharset::ShiftJIS => Box::new(WINDOWS_31J),
+            SaoriCharset::EucJP => Box::new(EUC_JP),
+            SaoriCharset::UTF8 => Box::new(UTF_8),
+            SaoriCharset::ISO2022JP => Box::new(ISO_2022_JP),
         }
     }
 }
@@ -321,12 +322,14 @@ mod tests {
         use super::*;
 
         mod new {
+            use encoding::EncoderTrap;
+
             use super::*;
 
             #[test]
             fn success_when_valid_bytes() {
                 let case_raw = "GET Version SAORI/1.0\r\nCharset: Shift_JIS\r\n\r\n";
-                let (case, _, _) = SHIFT_JIS.encode(&case_raw);
+                let case = WINDOWS_31J.encode(&case_raw, EncoderTrap::Strict).unwrap();
                 let result = SaoriRequest::new(&case).unwrap();
                 assert_eq!(result.charset(), &SaoriCharset::ShiftJIS);
                 assert_eq!(result.command(), &SaoriCommand::GetVersion);
@@ -339,18 +342,20 @@ mod tests {
             #[test]
             fn failed_when_invalid_bytes() {
                 let case_raw = "GET SAORI/1.0\r\nCharset: Shift_JIS\r\n\r\n";
-                let (case, _, _) = SHIFT_JIS.encode(&case_raw);
+                let case = WINDOWS_31J.encode(&case_raw, EncoderTrap::Strict).unwrap();
                 assert!(SaoriRequest::new(&case).is_err());
             }
         }
 
         mod read_contents_and_charset {
+            use encoding::EncoderTrap;
+
             use super::*;
 
             #[test]
             fn success_when_valid_bytes() {
                 let case_raw = "GET Version SAORI/1.0\r\nCharset: Shift_JIS\r\n\r\n";
-                let (case, _, _) = SHIFT_JIS.encode(&case_raw);
+                let case = WINDOWS_31J.encode(&case_raw, EncoderTrap::Strict).unwrap();
                 let (contents, charset) = SaoriRequest::read_contents_and_charset(&case).unwrap();
                 assert_eq!(contents.as_str(), case_raw);
                 assert_eq!(charset, SaoriCharset::ShiftJIS);
@@ -360,7 +365,7 @@ mod tests {
             fn failed_when_invalid_bytes() {
                 let case_raw =
                     "EXECUTE SHIORI/1.0\r\nCharset: UTF-8\r\nArgument0: あいうえお\r\n\r\n";
-                let (case, _, _) = SHIFT_JIS.encode(&case_raw);
+                let case = WINDOWS_31J.encode(&case_raw, EncoderTrap::Strict).unwrap();
                 assert!(SaoriRequest::read_contents_and_charset(&case).is_err());
             }
         }

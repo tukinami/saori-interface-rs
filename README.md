@@ -43,7 +43,7 @@ assert_eq!(result, expect);
 
 いずれも敬称略。ありがとうございます。
 
-+ [encoding\_rs](https://github.com/hsivonen/encoding_rs) / Henri Sivonen
++ [encoding](https://github.com/lifthrasiir/rust-encoding) / Kang Seonghoon
 
 ## ライセンス
 

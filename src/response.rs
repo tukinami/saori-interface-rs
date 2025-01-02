@@ -130,12 +130,13 @@ impl SaoriResponse {
     pub fn to_encoded_bytes(&self) -> Result<Vec<i8>, SaoriResponseError> {
         let response = self.to_string();
 
-        let (bytes_u8, _encode, has_error) = self.charset.to_encoding().encode(&response);
-
-        if has_error {
-            Err(SaoriResponseError::DecodeFailed)
-        } else {
-            Ok(bytes_u8.iter().map(|v| *v as i8).collect())
+        match self
+            .charset
+            .to_encoding()
+            .encode(&response, encoding::EncoderTrap::Strict)
+        {
+            Ok(v) => Ok(v.iter().map(|v| *v as i8).collect()),
+            Err(_) => Err(SaoriResponseError::DecodeFailed),
         }
     }
 
@@ -378,7 +379,7 @@ mod tests {
         }
 
         mod to_encoded_bytes {
-            use encoding_rs::SHIFT_JIS;
+            use encoding::{all::WINDOWS_31J, EncoderTrap, Encoding};
 
             use super::*;
 
@@ -392,8 +393,8 @@ mod tests {
                 let result = case.to_encoded_bytes().unwrap();
                 let expect_raw =
                     "SAORI/1.0 200 OK\r\nCharset: Shift_JIS\r\nResult: 1\r\nValue0: aaa\r\nValue1: bbb\r\n\r\n\0";
-                let (expect_cow, _, _) = SHIFT_JIS.encode(expect_raw);
-                let expect: Vec<i8> = expect_cow.iter().map(|v| *v as i8).collect();
+                let expect = WINDOWS_31J.encode(expect_raw, EncoderTrap::Strict).unwrap();
+                let expect: Vec<i8> = expect.iter().map(|v| *v as i8).collect();
                 assert_eq!(result, expect);
             }
         }
