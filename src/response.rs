@@ -116,12 +116,13 @@ impl SaoriResponse {
             SaoriStatus::BadRequest | SaoriStatus::InternalServerError => {}
             _ => {
                 let actually_empty_values = self.values.iter().all(|v| v.is_empty());
-                self.status =
-                    if self.result.is_empty() && self.values.is_empty() && actually_empty_values {
-                        SaoriStatus::NoContent
-                    } else {
-                        SaoriStatus::OK
-                    };
+                self.status = if self.result.is_empty()
+                    && (self.values.is_empty() || actually_empty_values)
+                {
+                    SaoriStatus::NoContent
+                } else {
+                    SaoriStatus::OK
+                };
             }
         }
     }
@@ -248,7 +249,7 @@ mod tests {
             use super::*;
 
             #[test]
-            fn checkinv_value_no_empty() {
+            fn checking_value_no_empty() {
                 let request_raw = "EXECUTE SAORI/1.0\r\nCharset: Shift_JIS\r\n\r\n\0";
                 let request = SaoriRequest::new(request_raw.as_bytes()).unwrap();
                 let mut case = SaoriResponse::from_request(&request);
@@ -268,7 +269,7 @@ mod tests {
             }
 
             #[test]
-            fn checkinv_value_empty() {
+            fn checking_value_empty() {
                 let request_raw = "EXECUTE SAORI/1.0\r\nCharset: Shift_JIS\r\n\r\n\0";
                 let request = SaoriRequest::new(request_raw.as_bytes()).unwrap();
                 let mut case = SaoriResponse::from_request(&request);
@@ -375,6 +376,54 @@ mod tests {
                         charset: SaoriCharset::ShiftJIS
                     }
                 );
+            }
+        }
+
+        mod on_change_result_and_value {
+            use super::*;
+
+            #[test]
+            fn no_content_when_value_actually_empty_and_no_result() {
+                let mut case = SaoriResponse::new_bad_request();
+                case.set_status(SaoriStatus::OK);
+                assert_eq!(case.status(), &SaoriStatus::OK);
+                let values = vec![String::new(), String::new(), String::new()];
+                case.set_values(values);
+                assert_eq!(case.status(), &SaoriStatus::NoContent);
+            }
+
+            #[test]
+            fn no_content_when_empty_value_and_no_result() {
+                let mut case = SaoriResponse::new_bad_request();
+                case.set_status(SaoriStatus::OK);
+                assert_eq!(case.status(), &SaoriStatus::OK);
+                let values = vec![];
+                case.set_values(values);
+                assert_eq!(case.status(), &SaoriStatus::NoContent);
+            }
+
+            #[test]
+            fn ok_when_some_values() {
+                let mut case = SaoriResponse::new_bad_request();
+                case.set_status(SaoriStatus::NoContent);
+                assert_eq!(case.status(), &SaoriStatus::NoContent);
+                let values = vec![String::new(), String::new(), String::new()];
+                case.set_values(values);
+                assert_eq!(case.status(), &SaoriStatus::NoContent);
+                case.set_value_at(3, "aaa".to_string());
+                assert_eq!(case.status(), &SaoriStatus::OK);
+            }
+
+            #[test]
+            fn ok_when_result_is_some() {
+                let mut case = SaoriResponse::new_bad_request();
+                case.set_status(SaoriStatus::NoContent);
+                assert_eq!(case.status(), &SaoriStatus::NoContent);
+                let values = vec![String::new(), String::new(), String::new()];
+                case.set_values(values);
+                assert_eq!(case.status(), &SaoriStatus::NoContent);
+                case.set_result("aaa".to_string());
+                assert_eq!(case.status(), &SaoriStatus::OK);
             }
         }
 
