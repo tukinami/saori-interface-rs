@@ -46,12 +46,12 @@ pub enum SaoriStatus {
 /// SaoriResponseを処理中のエラー
 #[derive(PartialEq, Debug)]
 pub enum SaoriResponseError {
-    DecodeFailed,
+    EncodeFailed,
 }
 
 impl SaoriResponse {
     /// status がBad Request である自身を生成する
-    pub fn new_bad_request() -> SaoriResponse {
+    pub const fn new_bad_request() -> SaoriResponse {
         SaoriResponse {
             version: SaoriVersion::V1_0,
             status: SaoriStatus::BadRequest,
@@ -137,7 +137,7 @@ impl SaoriResponse {
             .encode(&response, encoding::EncoderTrap::Strict)
         {
             Ok(v) => Ok(v.iter().map(|v| *v as i8).collect()),
-            Err(_) => Err(SaoriResponseError::DecodeFailed),
+            Err(_) => Err(SaoriResponseError::EncodeFailed),
         }
     }
 
